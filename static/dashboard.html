@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CodeArena</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/clike/clike.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/material-darker.css" type="text/css" crossorigin="anonymous"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/material-darker.css" />
+<style>
+  :root {
+    --bg:       #ffffff;
+    --surface:  #f5f7fa;
+    --surface2: #eef1f6;
+    --border:   #dde2ea;
+    --border2:  #c8d0de;
+    --accent:   #2563eb;
+    --accent2:  #1d4ed8;
+    --amber:    #d97706;
+    --red:      #dc2626;
+    --blue:     #2563eb;
+    --text:     #1e293b;
+    --muted:    #64748b;
+    --font-mono: 'JetBrains Mono', monospace;
+    --font-sans: 'Syne', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    overflow: hidden;
+  }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+  #app { display: flex; flex-direction: column; height: 100vh; }
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    height: 52px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+    z-index: 10;
+  }
+
+  .logo {
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    color: var(--text);
+  }
+  .logo span { color: var(--accent); }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .badge {
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    font-family: var(--font-mono);
+    letter-spacing: 0.5px;
+  }
+  .badge-easy   { background: rgba(37,99,235,0.10); color: #2563eb; }
+  .badge-medium { background: rgba(217,119,6,0.12);  color: var(--amber); }
+  .badge-hard   { background: rgba(220,38,38,0.10);   color: var(--red); }
+
+  /* ── Main split ── */
+  .main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* ── Left: problem list ── */
+  #sidebar {
+    width: 240px;
+    border-right: 1px solid var(--border);
+    background: var(--surface);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  .sidebar-header {
+    padding: 14px 16px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+  }
+
+  #problem-list {
+    overflow-y: auto;
+    flex: 1;
+  }
+
+  .problem-item {
+    padding: 12px 16px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .problem-item:hover { background: var(--surface2); }
+  .problem-item.active {
+    background: rgba(37,99,235,0.06);
+    border-left: 2px solid var(--accent);
+    padding-left: 14px;
+  }
+
+  .problem-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .problem-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .problem-num {
+    font-size: 11px;
+    color: var(--muted);
+    font-family: var(--font-mono);
+  }
+
+  /* ── Center: problem description ── */
+  #problem-panel {
+    width: 380px;
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  .panel-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+  .tab {
+    padding: 12px 20px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    color: var(--muted);
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  #problem-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+  }
+
+  .problem-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    gap: 10px;
+  }
+
+  .problem-heading h2 {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.3;
+  }
+
+  .tags-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 16px;
+  }
+  .tag {
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-family: var(--font-mono);
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    color: var(--muted);
+  }
+
+  .description {
+    font-size: 13.5px;
+    line-height: 1.75;
+    color: var(--text);
+  }
+  .description p { margin-bottom: 12px; }
+  .description code {
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 3px;
+    padding: 1px 6px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: #2563eb;
+  }
+  .description pre {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    overflow-x: auto;
+    margin: 10px 0;
+    line-height: 1.6;
+  }
+  .description pre code {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: 13px;
+    color: var(--text);
+  }
+  .description strong { color: var(--text); }
+  .description ul, .description ol { padding-left: 20px; margin-bottom: 12px; }
+  .description li { margin-bottom: 6px; }
+
+  /* ── Right: editor + output ── */
+  #editor-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-width: 0;
+  }
+
+  .editor-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    gap: 10px;
+  }
+
+  .editor-toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  select {
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    padding: 6px 10px;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  select:hover { border-color: var(--accent); }
+
+  .btn {
+    padding: 7px 18px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: var(--font-sans);
+    cursor: pointer;
+    transition: all 0.15s;
+    border: none;
+    outline: none;
+    white-space: nowrap;
+  }
+  .btn-ghost {
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    color: var(--text);
+  }
+  .btn-ghost:hover { border-color: var(--text); color: #fff; }
+  .btn-run {
+    background: rgba(37,99,235,0.10);
+    border: 1px solid rgba(37,99,235,0.35);
+    color: var(--blue);
+  }
+  .btn-run:hover { background: rgba(37,99,235,0.18); }
+  .btn-submit {
+    background: #2563eb;
+    border: 1px solid #1d4ed8;
+    color: #fff;
+  }
+  .btn-submit:hover { background: #1d4ed8; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .editor-wrap {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* CodeMirror override */
+  .CodeMirror {
+    height: 100% !important;
+    font-family: var(--font-mono) !important;
+    font-size: 14px !important;
+    line-height: 1.65 !important;
+    background: #ffffff !important;
+    color: #1e293b !important;
+  }
+  .CodeMirror-scroll { height: 100% !important; }
+
+  /* Gutter (line numbers) */
+  .CodeMirror-gutters {
+    background: #ffffff !important;
+    border-right: 1px solid #dde2ea !important;
+  }
+  .CodeMirror-linenumber {
+    color: #94a3b8 !important;
+  }
+
+  /* Cursor */
+  .CodeMirror-cursor { border-left: 2px solid #1e293b !important; }
+
+  /* Selection */
+  .CodeMirror-selected { background: #bfdbfe !important; }
+  .CodeMirror-focused .CodeMirror-selected { background: #bfdbfe !important; }
+
+  /* Syntax highlighting*/
+  .cm-keyword   { color: #7c3aed !important; font-weight: 600; }  /* purple */
+  .cm-def       { color: #1d4ed8 !important; }                    /* blue */
+  .cm-variable  { color: #1e293b !important; }                    /* near-black */
+  .cm-variable-2{ color: #0f766e !important; }                    /* teal */
+  .cm-property  { color: #0369a1 !important; }                    /* sky blue */
+  .cm-operator  { color: #b45309 !important; }                    /* amber */
+  .cm-number    { color: #0891b2 !important; }                    /* cyan */
+  .cm-string    { color: #15803d !important; }                    /* green */
+  .cm-string-2  { color: #15803d !important; }
+  .cm-comment   { color: #94a3b8 !important; font-style: italic; } /* slate */
+  .cm-atom      { color: #dc2626 !important; }                    /* red */
+  .cm-builtin   { color: #7c3aed !important; }                    /* purple */
+  .cm-tag       { color: #dc2626 !important; }
+  .cm-attribute { color: #b45309 !important; }
+  .cm-meta      { color: #64748b !important; }
+  .cm-type      { color: #1d4ed8 !important; font-weight: 600; }
+  .cm-error     { color: #dc2626 !important; background: #fee2e2 !important; }
+
+  #output-panel {
+    height: 220px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  .output-tabs {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .output-tab {
+    padding: 9px 18px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    color: var(--muted);
+    border-right: 1px solid var(--border);
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+  }
+  .output-tab:hover { color: var(--text); }
+  .output-tab.active { color: var(--accent); border-bottom-color: var(--accent); background: var(--surface2); }
+
+  #output-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px 18px;
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    line-height: 1.7;
+    background: #ffffff;
+  }
+
+  .output-placeholder {
+    color: var(--muted);
+    font-style: italic;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .verdict-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    border-radius: 6px;
+    margin-bottom: 12px;
+    font-weight: 700;
+    font-size: 15px;
+  }
+  .verdict-accepted { background: rgba(37,99,235,0.07); color: #2563eb; border-left: 3px solid #2563eb; }
+  .verdict-wrong    { background: rgba(220,38,38,0.07);  color: var(--red);    border-left: 3px solid var(--red); }
+  .verdict-error    { background: rgba(217,119,6,0.07);  color: var(--amber);  border-left: 3px solid var(--amber); }
+  .verdict-tle      { background: rgba(220,38,38,0.07);  color: var(--red);    border-left: 3px solid var(--red); }
+
+  .test-case {
+    margin-bottom: 10px;
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .test-case-header {
+    padding: 7px 12px;
+    background: var(--surface2);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .tc-pass { color: #2563eb; }
+  .tc-fail { color: var(--red); }
+  .test-case-body {
+    padding: 10px 12px;
+    font-size: 12px;
+    color: var(--muted);
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+  .tc-field label { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px; display: block; margin-bottom: 2px; }
+  .tc-field code { color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 3px; padding: 2px 6px; }
+
+  .spinner {
+    display: inline-block;
+    width: 14px; height: 14px;
+    border: 2px solid var(--border2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    vertical-align: middle;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .stdin-section {
+    margin-top: 10px;
+  }
+  .stdin-section label {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    display: block;
+    margin-bottom: 6px;
+  }
+  .stdin-section textarea {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    padding: 8px 10px;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    resize: none;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .stdin-section textarea:focus { border-color: var(--accent); }
+
+  .api-banner {
+    background: rgba(255,184,0,0.08);
+    border: 1px solid rgba(255,184,0,0.25);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 12px;
+    color: var(--amber);
+    margin-bottom: 14px;
+    line-height: 1.6;
+  }
+  .api-banner a { color: var(--amber); text-decoration: underline; }
+  .stats-row {
+    display: flex;
+    gap: 20px;
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 8px;
+    font-family: var(--font-mono);
+  }
+  .stats-row span { color: var(--text); }
+
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    gap: 12px;
+    color: var(--muted);
+    font-size: 14px;
+  }
+  .empty-icon {
+    font-size: 40px;
+    opacity: 0.3;
+  }
+
+  .resizer {
+    width: 4px;
+    cursor: col-resize;
+    background: var(--border);
+    flex-shrink: 0;
+    transition: background 0.15s;
+  }
+  .resizer:hover { background: var(--accent); }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="logo">Code<span>Arena</span></div>
+    <div class="header-right">
+      <span id="backend-status">⬤ connecting…</span>
+    </div>
+  </header>
+
+  <div class="main">
+    <div id="sidebar">
+      <div class="sidebar-header">Problems</div>
+      <div id="problem-list"></div>
+    </div>
+
+    <div id="problem-panel">
+      <div class="panel-tabs">
+        <div class="tab active" onclick="switchProblemTab('description')">Description</div>
+      </div>
+      <div id="problem-content">
+        <div class="empty-state">
+          <div class="empty-icon">📋</div>
+          <div>Select a problem to begin</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="editor-panel">
+      <div class="editor-toolbar">
+        <div class="editor-toolbar-left">
+          <select id="lang-select" onchange="onLangChange()">
+            <option value="python">Python 3</option>
+            <option value="javascript">JavaScript</option>
+            <option value="java">Java</option>
+            <option value="cpp">C++</option>
+            <option value="c">C</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-ghost" onclick="resetCode()">Reset</button>
+          <button class="btn btn-run" id="run-btn" onclick="runCode()">▶ Run</button>
+          <button class="btn btn-submit" id="submit-btn" onclick="submitCode()">Submit →</button>
+        </div>
+      </div>
+
+      <div class="editor-wrap" id="editor-wrap">
+        <textarea id="code-editor"></textarea>
+      </div>
+
+      <div id="output-panel">
+        <div class="output-tabs">
+          <div class="output-tab active" id="tab-output" onclick="switchOutputTab('output')">Output</div>
+          <div class="output-tab" id="tab-results" onclick="switchOutputTab('results')">Test Results</div>
+        </div>
+        <div id="output-content">
+          <div class="output-placeholder">▶ Run your code to see output here</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API_BASE = 'http://localhost:8000';
+
+let problems = [];
+let currentProblem = null;
+let editor = null;
+let currentOutputTab = 'output';
+let currentProblemTab = 'description';
+let lastRunResult = null;
+let lastSubmitResult = null;
+
+const LANG_MODES = {
+  python:     'python',
+  javascript: 'javascript',
+  java:       'text/x-java',
+  cpp:        'text/x-c++src',
+  c:          'text/x-csrc',
+  go:         'go',
+  rust:       'rust',
+  ruby:       'ruby',
+  typescript: 'text/typescript',
+  kotlin:     'text/x-kotlin',
+};
+
+function initEditor() {
+  editor = CodeMirror.fromTextArea(document.getElementById('code-editor'), {
+    mode: 'python',
+    theme: 'default',
+    lineNumbers: true,
+    indentUnit: 4,
+    tabSize: 4,
+    indentWithTabs: false,
+    lineWrapping: false,
+    autofocus: true,
+    extraKeys: {
+      Tab: cm => cm.execCommand('insertSoftTab'),
+      'Ctrl-Enter': runCode,
+      'Cmd-Enter':  runCode,
+    },
+  });
+  editor.setSize('100%', '100%');
+}
+
+function onLangChange() {
+  const lang = document.getElementById('lang-select').value;
+  const mode = LANG_MODES[lang] || 'python';
+  editor.setOption('mode', mode);
+  if (currentProblem && currentProblem.starter_code) {
+    const starter = currentProblem.starter_code[lang];
+    if (starter) editor.setValue(starter);
+  }
+}
+
+function resetCode() {
+  if (!currentProblem) return;
+  const lang = document.getElementById('lang-select').value;
+  const starter = currentProblem.starter_code?.[lang] || '# Write your solution here\n';
+  editor.setValue(starter);
+}
+
+async function fetchJSON(url, opts = {}) {
+  const resp = await fetch(url, { ...opts, headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) } });
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({ detail: resp.statusText }));
+    throw new Error(err.detail || resp.statusText);
+  }
+  return resp.json();
+}
+
+async function loadProblems() {
+  try {
+    problems = await fetchJSON(`${API_BASE}/problems`);
+    renderProblemList();
+    document.getElementById('backend-status').textContent = '⬤ connected';
+    document.getElementById('backend-status').style.color = 'var(--accent)';
+  } catch (e) {
+    document.getElementById('backend-status').style.display = 'none';
+    //problems = DEMO_PROBLEMS;
+    renderProblemList();
+  }
+}
+
+function renderProblemList() {
+  const list = document.getElementById('problem-list');
+  list.innerHTML = problems.map((p, i) => `
+    <div class="problem-item" id="pi-${p.id}" onclick="selectProblem(${p.id})">
+      <div class="problem-title">${p.title}</div>
+      <div class="problem-meta">
+        <span class="problem-num">#${p.id}</span>
+        <span class="badge badge-${p.difficulty.toLowerCase()}">${p.difficulty}</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function selectProblem(id) {
+  document.querySelectorAll('.problem-item').forEach(el => el.classList.remove('active'));
+  const el = document.getElementById(`pi-${id}`);
+  if (el) el.classList.add('active');
+
+  try {
+    currentProblem = await fetchJSON(`${API_BASE}/problems/${id}`);
+  } catch {
+    //currentProblem = DEMO_PROBLEMS.find(p => p.id === id);
+  }
+
+  if (!currentProblem) return;
+
+  renderProblemDescription();
+  resetCode();
+  clearOutput();
+}
+
+function renderProblemDescription() {
+  if (!currentProblem) return;
+  const p = currentProblem;
+  const content = document.getElementById('problem-content');
+
+  if (currentProblemTab === 'description') {
+    content.innerHTML = `
+      <div class="problem-heading">
+        <h2>${p.title}</h2>
+        <span class="badge badge-${p.difficulty.toLowerCase()}">${p.difficulty}</span>
+      </div>
+      <div class="tags-row">
+        ${(p.tags || []).map(t => `<span class="tag">${t}</span>`).join('')}
+      </div>
+      <div class="description">${renderMarkdown(p.description)}</div>
+    `;
+  } else {
+    content.innerHTML = `
+      <div class="api-banner">
+        Custom input is passed as stdin to your program. Use <code>input()</code> in Python, <code>readline</code> in JS, etc.
+      </div>
+      <div class="stdin-section">
+        <label>Standard Input (stdin)</label>
+        <textarea id="custom-stdin" rows="8" placeholder="Enter your custom input here..."></textarea>
+      </div>
+    `;
+  }
+}
+
+function switchProblemTab(tab) {
+  currentProblemTab = tab;
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    t.classList.toggle('active', ['description','stdin'][i] === tab);
+  });
+  if (currentProblem) renderProblemDescription();
+}
+
+function renderMarkdown(md) {
+  return md
+    .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\n\n/g, '</p><p>')
+    .replace(/^/, '<p>')
+    .replace(/$/, '</p>');
+}
+
+function setLoading(on) {
+  const runBtn = document.getElementById('run-btn');
+  const subBtn = document.getElementById('submit-btn');
+  runBtn.disabled = on;
+  subBtn.disabled = on;
+  if (on) {
+    runBtn.innerHTML = '<span class="spinner"></span> Running';
+    subBtn.innerHTML = '<span class="spinner"></span>';
+  } else {
+    runBtn.innerHTML = '▶ Run';
+    subBtn.innerHTML = 'Submit →';
+  }
+}
+
+async function runCode() {
+  if (!editor) return;
+  const code = editor.getValue();
+  const lang = document.getElementById('lang-select').value;
+  const stdin = currentProblem?.test_cases?.[0]?.input || '';
+
+  setLoading(true);
+  switchOutputTab('output');
+  document.getElementById('output-content').innerHTML = `<span class="spinner"></span> Executing…`;
+
+  try {
+    const result = await fetchJSON(`${API_BASE}/run`, {
+      method: 'POST',
+      body: JSON.stringify({ code, lang_id: lang, stdin }),
+    });
+    lastRunResult = result;
+    renderRunOutput(result);
+  } catch (e) {
+    renderError(e.message);
+  } finally {
+    setLoading(false);
+  }
+}
+
+async function submitCode() {
+  if (!currentProblem || !editor) {
+    alert('Please select a problem first!');
+    return;
+  }
+  const code = editor.getValue();
+  const lang = document.getElementById('lang-select').value;
+  
+  setLoading(true);
+  switchOutputTab('results');
+  document.getElementById('output-content').innerHTML = `<span class="spinner"></span> Running test cases…`;
+
+  try {
+    const result = await fetchJSON(`${API_BASE}/submit/${currentProblem.id}`, {
+      method: 'POST',
+      body: JSON.stringify({ code, lang_id: lang }),
+    });
+    lastSubmitResult = result;
+    renderSubmitResults(result);
+  } catch (e) {
+    renderError(e.message);
+  } finally {
+    setLoading(false);
+  }
+}
+
+async function fetchJSON(url, opts = {}) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30000);
+  try {
+    const resp = await fetch(url, {
+      ...opts,
+      signal: controller.signal,
+      headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) }
+    });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({ detail: resp.statusText }));
+      throw new Error(err.detail || resp.statusText);
+    }
+    return resp.json();
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function switchOutputTab(tab) {
+  currentOutputTab = tab;
+  document.getElementById('tab-output').classList.toggle('active', tab === 'output');
+  document.getElementById('tab-results').classList.toggle('active', tab === 'results');
+  if (tab === 'output' && lastRunResult) renderRunOutput(lastRunResult);
+  else if (tab === 'results' && lastSubmitResult) renderSubmitResults(lastSubmitResult);
+  else if (tab === 'output') document.getElementById('output-content').innerHTML = `<div class="output-placeholder">▶ Run your code to see output here</div>`;
+  else document.getElementById('output-content').innerHTML = `<div class="output-placeholder">→ Submit to run against test cases</div>`;
+}
+
+function clearOutput() {
+  lastRunResult = null;
+  lastSubmitResult = null;
+  document.getElementById('output-content').innerHTML = `<div class="output-placeholder">▶ Run your code to see output here</div>`;
+}
+
+function renderRunOutput(r) {
+  const out = document.getElementById('output-content');
+  const verdict = r.verdict || 'Unknown';
+  const cls = verdict === 'Accepted' ? 'accepted' : verdict.includes('Error') || verdict.includes('Compilation') ? 'error' : 'wrong';
+  
+  let html = `<div class="verdict-bar verdict-${cls}">
+    ${verdictIcon(verdict)} ${verdict}
+  </div>`;
+
+  if (r.stdout) html += `<div style="margin-bottom:10px;"><div style="font-size:11px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.8px;">Output</div><pre style="background:var(--surface);border:1px solid var(--border2);border-radius:6px;padding:10px;color:var(--text);font-size:12px;white-space:pre-wrap;">${escHtml(r.stdout)}</pre></div>`;
+  if (r.stderr) html += `<div style="margin-bottom:10px;"><div style="font-size:11px;color:var(--red);margin-bottom:4px;text-transform:uppercase;letter-spacing:.8px;">Stderr</div><pre style="background:rgba(220,38,38,0.05);border:1px solid rgba(220,38,38,0.2);border-radius:6px;padding:10px;color:#b91c1c;font-size:12px;white-space:pre-wrap;">${escHtml(r.stderr)}</pre></div>`;
+  if (r.compile_output) html += `<div style="margin-bottom:10px;"><div style="font-size:11px;color:var(--amber);margin-bottom:4px;text-transform:uppercase;letter-spacing:.8px;">Compile Output</div><pre style="background:rgba(217,119,6,0.05);border:1px solid rgba(217,119,6,0.2);border-radius:6px;padding:10px;color:#92400e;font-size:12px;white-space:pre-wrap;">${escHtml(r.compile_output)}</pre></div>`;
+
+  if (r.execution_time || r.memory) {
+    html += `<div class="stats-row">`;
+    if (r.execution_time) html += `Runtime: <span>${r.execution_time}</span>`;
+    if (r.memory) html += `Memory: <span>${r.memory}</span>`;
+    html += `</div>`;
+  }
+
+  out.innerHTML = html;
+}
+
+function renderSubmitResults(r) {
+  const out = document.getElementById('output-content');
+  const overall = r.overall_verdict;
+  const cls = overall === 'Accepted' ? 'accepted' : overall.includes('Error') || overall.includes('Compilation') ? 'error' : 'wrong';
+
+  let html = `<div class="verdict-bar verdict-${cls}">
+    ${verdictIcon(overall)} ${overall} &nbsp;
+    <span style="font-weight:400;font-size:13px;color:var(--muted);">${r.passed}/${r.total} test cases passed</span>
+  </div>`;
+
+  (r.test_results || []).forEach(tc => {
+    const ok = tc.passed;
+    html += `
+    <div class="test-case">
+      <div class="test-case-header">
+        <span class="${ok ? 'tc-pass' : 'tc-fail'}">${ok ? '✓' : '✗'}</span>
+        <span>Case ${tc.case}</span>
+        <span style="color:var(--muted);font-size:11px;margin-left:auto;">${tc.execution_time || ''}</span>
+      </div>
+      <div class="test-case-body">
+        <div class="tc-field"><label>Input</label><code>${escHtml(tc.input)}</code></div>
+        <div class="tc-field"><label>Expected</label><code>${escHtml(tc.expected)}</code></div>
+        <div class="tc-field"><label>Got</label><code style="color:${ok ? 'var(--accent)' : 'var(--red)'}">${escHtml(tc.actual || '(none)')}</code></div>
+      </div>
+      ${tc.stderr ? `<div style="padding:8px 12px;font-size:11.5px;color:var(--red);border-top:1px solid var(--border);">${escHtml(tc.stderr)}</div>` : ''}
+      ${tc.compile_output ? `<div style="padding:8px 12px;font-size:11.5px;color:var(--amber);border-top:1px solid var(--border);">${escHtml(tc.compile_output)}</div>` : ''}
+    </div>`;
+  });
+
+  out.innerHTML = html;
+}
+
+function renderError(msg) {
+  document.getElementById('output-content').innerHTML = `
+    <div class="verdict-bar verdict-error">⚠ Error</div>
+    <pre style="color:var(--amber);font-size:12.5px;white-space:pre-wrap;">${escHtml(msg)}</pre>
+    <div style="margin-top:12px;font-size:12px;color:var(--muted);">
+      Make sure the backend is running:<br/>
+      <code style="color:var(--text);">pip install -r requirements.txt &amp;&amp; uvicorn main:app --reload</code>
+    </div>
+  `;
+}
+
+function verdictIcon(v) {
+  if (v === 'Accepted') return '✓';
+  if (v === 'Compilation Error') return '⊘';
+  if (v === 'Time Limit Exceeded') return '⏱';
+  if (v.includes('Runtime')) return '⚡';
+  return '✗';
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  initEditor();
+  loadProblems();
+
+  setTimeout(() => {
+    if (problems.length > 0) selectProblem(problems[0].id);
+  }, 300);
+});
+</script>
+</body>
+</html>
