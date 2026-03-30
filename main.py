@@ -114,15 +114,3 @@ async def submit_code(problem_id: int, src_code: Code_Request):
         "total": len(problem["test_cases"]),
         "test_results": test_results
     }
-
-"""@app.get("/result/{token}")
-async def get_result(token: str):
-    async with httpx.AsyncClient() as client:
-        response = await client.get(
-            f"{RAPIDAPI_URL}/{token}",
-            headers=headers,
-            params={"base64_encoded": "true", "fields": "*"}
-        )
-
-    result = response.json()
-    return {"stdout": decode_base64(result.get("stdout")), "stderr": decode_base64(result.get("stderr"))}"""
