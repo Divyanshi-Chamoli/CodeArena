@@ -21,7 +21,7 @@ CodeArena is a full-stack online code evaluation platform that allows users to w
 ├── .env              # RapidAPI key (never commit this)
 ├── requirements.txt  # Python dependencies
 └── static/
-    └── index.html    # Single-file frontend
+    └── dashboard.html    # Single-file frontend
 ```
 
 ---
